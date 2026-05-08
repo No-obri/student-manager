@@ -14,8 +14,9 @@ pipeline {
             steps {
                 echo '=== Stage 1: Code Linting ==='
                 sh '''
-                    pip install flake8 --quiet
-                    flake8 app.py --max-line-length=120 --ignore=E302,W503
+                    pip3 install flake8 --quiet --break-system-packages || pip install flake8 --quiet
+                    cd student-manager
+                    python3 -m flake8 app.py --max-line-length=120 --ignore=E302,W503,E501
                     echo "Linting passed successfully."
                 '''
             }
@@ -23,11 +24,12 @@ pipeline {
 
         stage('Code Build') {
             steps {
-                echo '=== Stage 2: Building Docker Image for Application ==='
+                echo '=== Stage 2: Building Docker Image ==='
                 sh '''
+                    cd student-manager
                     docker build -t ${APP_IMAGE}:${BUILD_NUMBER} -f Dockerfile .
                     docker tag ${APP_IMAGE}:${BUILD_NUMBER} ${APP_IMAGE}:latest
-                    echo "Docker image built: ${APP_IMAGE}:${BUILD_NUMBER}"
+                    echo "Docker image built successfully."
                 '''
             }
         }
@@ -36,37 +38,27 @@ pipeline {
             steps {
                 echo '=== Stage 3: Deploying Application Container ==='
                 sh '''
-                    # Stop and remove existing container if running
                     docker stop ${CONTAINER_NAME} || true
                     docker rm ${CONTAINER_NAME} || true
-
-                    # Run the application container
                     docker run -d \
                         --name ${CONTAINER_NAME} \
                         -p ${APP_PORT}:5000 \
-                        --network bridge \
                         ${APP_IMAGE}:latest
-
-                    # Wait for app to be ready
                     sleep 5
                     echo "Application deployed on port ${APP_PORT}"
-                    docker ps | grep ${CONTAINER_NAME}
                 '''
             }
         }
 
         stage('Containerized Selenium Testing') {
             steps {
-                echo '=== Stage 4: Running Selenium Tests in Docker ==='
+                echo '=== Stage 4: Running Selenium Tests ==='
                 sh '''
-                    # Build the test Docker image
+                    cd student-manager
                     docker build -t ${TEST_IMAGE}:latest -f Dockerfile.test .
-
-                    # Run Selenium tests linked to the app container
                     docker run --rm \
                         --network container:${CONTAINER_NAME} \
                         ${TEST_IMAGE}:latest
-
                     echo "Selenium tests completed."
                 '''
             }
@@ -75,7 +67,7 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline completed successfully! Application deployed and tested.'
+            echo 'Pipeline completed successfully!'
         }
         failure {
             echo 'Pipeline failed. Check logs above for errors.'
