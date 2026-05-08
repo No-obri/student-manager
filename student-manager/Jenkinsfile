@@ -11,14 +11,13 @@ pipeline {
     stages {
 
         stage('Code Linting') {
-            steps {
+           steps {
                 echo '=== Stage 1: Code Linting ==='
                 sh '''
-                    pip3 install flake8 --quiet --break-system-packages || pip install flake8 --quiet
                     cd student-manager
                     python3 -m flake8 app.py --max-line-length=120 --ignore=E302,W503,E501
                     echo "Linting passed successfully."
-                '''
+                 '''
             }
         }
 
